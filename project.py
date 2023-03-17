@@ -23,7 +23,7 @@ def generate_short_name(length=8):
 
 
 def is_valid_url(url):
-    return url.startswith('http://') or url.startswith('https://')
+    return url.startswith('http://') or url.startswith('https://') and len(url) <= 250
 
 
 class URL(Base):
