@@ -2,7 +2,9 @@ from flask import Flask, jsonify, request
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
-from datetime import datetime
+from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
+
 import random
 import string
 
@@ -34,6 +36,9 @@ class URL(Base):
     custom_name = Column(String(50), nullable=True, unique=True)
     access_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    def is_expired(self):
+        return self.created_at < datetime.utcnow() - timedelta(days=30)
 
 
 Base.metadata.create_all(engine)
@@ -102,6 +107,18 @@ def create_custom_url(custom_name):
     # Return the shortened URL
     return jsonify({'url': f'/url/{custom_name}'}), 201
 
+
+# delete expired urls
+@app.route('/delete_expired_urls')
+def delete_expired_urls():
+    session.query(URL).filter(URL.is_expired()).delete()
+    session.commit()
+    return 'Expired URLs deleted'
+
+# delete expired urls in background
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=delete_expired_urls, trigger='interval', days=1)
+scheduler.start()
 
 if __name__ == '__main__':
     app.run(debug=True)
